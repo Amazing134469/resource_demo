@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>能耗扣费交互原型 - 能源预付费系统</title>
+    <style>
+        :root { --primary: #1890ff; --danger: #f5222d; --warning: #faad14; --success: #52c41a; --text-sec: #8c8c8c; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #262626; }
+        
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        
+        /* 看板 */
+        .summary-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; }
+        .balance-box { background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%); color: white; padding: 25px; border-radius: 12px; position: relative; transition: 0.3s; }
+        .predict-tag { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+
+        /* 筛选区 */
+        .filter-bar { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
+        .btn-action { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; float: right; }
+        .btn-action:hover { background: #40a9ff; }
+
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; padding: 12px; text-align: left; color: var(--text-sec); font-size: 13px; border-bottom: 2px solid #f0f0f0; }
+        td { padding: 15px 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; transition: 0.3s; }
+        
+        .formula { font-size: 12px; color: var(--text-sec); display: block; margin-top: 4px; }
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid #ddd; margin-right: 5px; }
+        .tag-elec { background: #e6f7ff; color: #1890ff; border-color: #91d5ff; }
+        .tag-water { background: #f6ffed; color: #52c41a; border-color: #b7eb8f; }
+        
+        /* 交互高亮 */
+        .new-row { background: #f6ffed !important; animation: highlight 2s ease-out; }
+        .alert-row { background: #fff7e6 !important; }
+        @keyframes highlight { from { background: #d9f7be; } to { background: white; } }
+
+        .empty-tip { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card summary-grid">
+        <div class="balance-box" id="balance-card">
+            <div class="predict-tag" id="predict-days">预计还可使用：-- 天</div>
+            <div style="opacity: 0.8; font-size: 14px;">账户统筹余额 (水/电/空调)</div>
+            <div style="font-size: 36px; font-weight: bold; margin: 10px 0;">¥ <span id="display-balance">500.00</span></div>
+            <div style="font-size: 12px; opacity: 0.9;" id="last-update">等待仪表上报数据...</div>
+        </div>
+        <div style="border-left: 1px solid #eee; padding-left: 20px;">
+            <div style="color:var(--text-sec); font-size: 13px;">今日已累计消耗</div>
+            <div style="font-size: 20px; margin-top: 10px;">¥ <span id="today-cost">0.00</span></div>
+            <div id="cost-trend" style="font-size: 12px; margin-top: 5px; color:var(--success)">数据平稳</div>
+        </div>
+        <div style="text-align: center; display: flex; align-items: center; justify-content: center;">
+            <button class="btn-action" onclick="simulateUsage()">⚡ 模拟产生新扣费</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="filter-bar">
+            <strong>能耗扣费明细（穿透视图）</strong>
+            <select id="type-filter" onchange="renderTable()" style="padding: 5px; border-radius: 4px;">
+                <option value="ALL">全部能源</option>
+                <option value="ELEC">电能 (kWh)</option>
+                <option value="WATER">水耗 (m³)</option>
+            </select>
+            <span style="font-size: 12px; color: var(--text-sec);">* 自动展示计费公式与读数止止码</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th width="180">结算时间 / 类型</th>
+                    <th width="200">仪表读数 (起-止)</th>
+                    <th>计费逻辑 (用量 × 单价)</th>
+                    <th>扣费金额</th>
+                    <th>扣后余额</th>
+                </tr>
+            </thead>
+            <tbody id="detail-body">
+                </tbody>
+        </table>
+        <div id="empty-msg" class="empty-tip" style="display:none;">暂无消费明细</div>
+    </div>
+</div>
+
+<script>
+    // 模拟初始状态
+    let balance = 500.00;
+    let records = [];
+    let lastElecRead = 1250.0;
+    let lastWaterRead = 410.0;
+
+    // 费率配置
+    const RATES = { ELEC: 0.85, WATER: 5.20 };
+
+    // 模拟新用量产生
+    function simulateUsage() {
+        const type = Math.random() > 0.4 ? 'ELEC' : 'WATER';
+        const usage = (Math.random() * 5).toFixed(2); // 随机产生0-5的用量
+        const unitPrice = RATES[type];
+        const cost = parseFloat((usage * unitPrice).toFixed(2));
+        
+        let startRead, endRead;
+        if(type === 'ELEC') {
+            startRead = lastElecRead;
+            endRead = parseFloat((lastElecRead + parseFloat(usage)).toFixed(2));
+            lastElecRead = endRead;
+        } else {
+            startRead = lastWaterRead;
+            endRead = parseFloat((lastWaterRead + parseFloat(usage)).toFixed(2));
+            lastWaterRead = endRead;
+        }
+
+        balance = parseFloat((balance - cost).toFixed(2));
+
+        // 插入记录
+        const newRecord = {
+            id: Date.now(),
+            time: new Date().toLocaleString(),
+            type: type,
+            start: startRead,
+            end: endRead,
+            usage: usage,
+            price: unitPrice,
+            cost: cost,
+            balance: balance,
+            isAlert: usage > 3.5 // 模拟异常检测：用量大于3.5即高亮
+        };
+
+        records.unshift(newRecord);
+        updateDashboard(newRecord);
+        renderTable();
+        
+        // 余额过低警告交互
+        if(balance < 50) {
+            document.getElementById('balance-card').style.background = 'linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)';
+        }
+    }
+
+    // 更新看板
+    function updateDashboard(last) {
+        document.getElementById('display-balance').innerText = balance.toFixed(2);
+        document.getElementById('last-update').innerText = `最后扣费：${last.time} (${last.type === 'ELEC'?'电':'水'} -${last.cost}元)`;
+        
+        // 模拟预测：假设未来每天平均消耗 15 元
+        const dailyAvg = 15;
+        const days = Math.floor(balance / dailyAvg);
+        document.getElementById('predict-days').innerText = `预计还可使用：${days} 天`;
+
+        // 计算今日统计
+        const todayStr = new Date().toLocaleDateString();
+        const todayCost = records.reduce((sum, r) => sum + r.cost, 0);
+        document.getElementById('today-cost').innerText = todayCost.toFixed(2);
+        
+        const trend = document.getElementById('cost-trend');
+        if(todayCost > 50) {
+            trend.innerText = "↑ 今日消耗较高";
+            trend.style.color = "var(--danger)";
+        }
+    }
+
+    // 渲染表格
+    function renderTable() {
+        const filter = document.getElementById('type-filter').value;
+        const tbody = document.getElementById('detail-body');
+        const filtered = filter === 'ALL' ? records : records.filter(r => r.type === filter);
+        
+        if(filtered.length === 0) {
+            tbody.innerHTML = '';
+            document.getElementById('empty-msg').style.display = 'block';
+            return;
+        }
+        document.getElementById('empty-msg').style.display = 'none';
+
+        tbody.innerHTML = filtered.map((r, index) => `
+            <tr class="${index === 0 ? 'new-row' : ''} ${r.isAlert ? 'alert-row' : ''}">
+                <td>
+                    ${r.time}<br>
+                    <span class="tag ${r.type === 'ELEC' ? 'tag-elec' : 'tag-water'}">${r.type === 'ELEC' ? '电能' : '水耗'}</span>
+                </td>
+                <td>
+                    <span style="color:#999">${r.start}</span> → <b>${r.end}</b>
+                </td>
+                <td>
+                    <span style="font-weight:600">${r.usage} ${r.type === 'ELEC' ? 'kWh' : 'm³'}</span>
+                    <span class="formula">${r.usage} × ${r.price.toFixed(2)}元/单位</span>
+                    ${r.isAlert ? '<span style="color:var(--warning); font-size:11px;">⚠️ 检测到用量突增</span>' : ''}
+                </td>
+                <td><b style="color:var(--danger)">-${r.cost.toFixed(2)}</b></td>
+                <td><b>¥ ${r.balance.toFixed(2)}</b></td>
+            </tr>
+        `).join('');
+    }
+
+    // 初始化一条数据
+    simulateUsage();
+</script>
+
+</body>
+</html>

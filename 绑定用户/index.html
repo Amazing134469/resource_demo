@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>能源预付费系统 - 绑定与管理原型</title>
+    <style>
+        :root { --primary: #1890ff; --bg: #f5f7fa; --text: #333; }
+        body { font-family: sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); height: 100vh; }
+        
+        /* 侧边导航 */
+        .sidebar { width: 220px; background: #001529; color: white; padding-top: 20px; }
+        .nav-item { padding: 15px 25px; cursor: pointer; opacity: 0.7; transition: 0.3s; }
+        .nav-item:hover, .nav-item.active { opacity: 1; background: var(--primary); }
+
+        /* 主界面 */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { background: white; padding: 15px 30px; border-bottom: 1px solid #ddd; font-weight: bold; display: flex; justify-content: space-between; }
+        .container { padding: 25px; overflow-y: auto; flex: 1; }
+
+        /* 卡片与表单 */
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+        .section-title { font-size: 16px; margin-bottom: 20px; font-weight: bold; border-left: 4px solid var(--primary); padding-left: 10px; }
+        
+        .form-group { margin-bottom: 15px; display: flex; align-items: center; }
+        .form-group label { width: 100px; font-size: 14px; }
+        .form-group input, .form-group select { flex: 1; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px; }
+        
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        th { background: #fafafa; }
+
+        /* 按钮 */
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #40a9ff; }
+        .btn-outline { background: white; border: 1px solid #d9d9d9; margin-left: 10px; }
+
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid #ddd; }
+        .tag-blue { color: #1890ff; background: #e6f7ff; border-color: #91d5ff; }
+
+        /* 隐藏逻辑 */
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div style="padding: 0 25px 20px; font-size: 18px; font-weight: bold;">能源预付费后台</div>
+        <div class="nav-item active" onclick="showPage('bind')">用户绑定管理</div>
+        <div class="nav-item" onclick="showPage('list')">已绑定用户清单</div>
+    </div>
+
+    <div class="main">
+        <div class="header">
+            <span id="header-title">付费用户绑定</span>
+            <span style="font-weight: normal; font-size: 12px; color: #666;">系统状态：预付费管理模块 [已开启]</span>
+        </div>
+
+        <div class="container">
+            <div id="page-bind" class="page active">
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <div class="section-title">新增用户绑定</div>
+                    <div class="form-group">
+                        <label>所属区域</label>
+                        <select id="region">
+                            <option>A区办公楼</option>
+                            <option>B区公寓楼</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>房间/户号</label>
+                        <input type="text" id="room" placeholder="例如：A-101">
+                    </div>
+                    <div class="form-group">
+                        <label>用户姓名</label>
+                        <input type="text" id="username" placeholder="请输入付费主体名称">
+                    </div>
+                    <div class="form-group">
+                        <label>关联手机号</label>
+                        <input type="text" id="phone" placeholder="接收欠费通知短信">
+                    </div>
+                    <div class="form-group">
+                        <label>绑定仪表</label>
+                        <div style="flex:1">
+                            <input type="checkbox" checked disabled> 电表 (SN: E2026_001) <br>
+                            <input type="checkbox" checked> 水表 (SN: W2026_099) <br>
+                            <input type="checkbox"> 空调网关 (SN: AC_552)
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>初始余额</label>
+                        <input type="number" id="init_balance" value="0.00">
+                    </div>
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button class="btn btn-outline">重置</button>
+                        <button class="btn btn-primary" onclick="doBind()">立即绑定设备</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-list" class="page">
+                <div class="card">
+                    <div class="section-title">已绑定用户资产记录</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>户号</th>
+                                <th>用户名</th>
+                                <th>绑定仪表数</th>
+                                <th>手机号</th>
+                                <th>绑定时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bind-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟已绑定数据
+        let bindData = [
+            { room: 'A-201', name: '王大锤', meterCount: 2, phone: '138****8888', time: '2026-03-20' },
+            { room: 'B-502', name: '李科技', meterCount: 1, phone: '139****1234', time: '2026-03-22' }
+        ];
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + id).classList.add('active');
+            event.currentTarget.classList.add('active');
+            document.getElementById('header-title').innerText = event.currentTarget.innerText;
+            if(id === 'list') renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('bind-table');
+            tbody.innerHTML = bindData.map(item => `
+                <tr>
+                    <td><b>${item.room}</b></td>
+                    <td>${item.name}</td>
+                    <td><span class="tag tag-blue">${item.meterCount} 个仪表</span></td>
+                    <td>${item.phone}</td>
+                    <td>${item.time}</td>
+                    <td>
+                        <button class="btn btn-outline" style="font-size:12px" onclick="alert('解绑后设备将恢复默认常开状态')">解绑</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function doBind() {
+            const room = document.getElementById('room').value;
+            const name = document.getElementById('username').value;
+            const phone = document.getElementById('phone').value;
+            
+            if(!room || !name) {
+                alert("请完整填写户号和姓名");
+                return;
+            }
+
+            // 添加到模拟数据
+            bindData.unshift({
+                room: room,
+                name: name,
+                meterCount: 2,
+                phone: phone || '未留存',
+                time: new Date().toISOString().split('T')[0]
+            });
+
+            alert(`绑定成功！\n户号：${room}\n账户已同步至预付费管理模块。`);
+            showPage('list');
+        }
+    </script>
+</body>
+</html>

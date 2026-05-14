@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>能耗明细透视 - 能源预付费系统</title>
+    <style>
+        :root { --primary: #1890ff; --text-main: #262626; --text-sec: #8c8c8c; --bg: #f0f2f5; }
+        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text-main); }
+        
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        
+        /* 顶部余额预测看板 */
+        .summary-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; }
+        .balance-box { background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%); color: white; padding: 25px; border-radius: 12px; position: relative; }
+        .predict-tag { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+
+        /* 搜索与筛选 */
+        .filter-bar { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
+        
+        /* 增强版表格 */
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; padding: 12px; text-align: left; color: var(--text-sec); font-weight: 500; font-size: 13px; }
+        td { padding: 15px 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        
+        .formula { font-size: 12px; color: var(--text-sec); margin-top: 4px; display: block; }
+        .usage-val { font-weight: 600; color: #1890ff; }
+        .amount-val { font-weight: 600; color: #f5222d; }
+        
+        /* 状态标签 */
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .tag-elec { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+        .tag-water { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .alert-row { background: #fff7e6; } /* 异常用能高亮 */
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card summary-grid">
+        <div class="balance-box">
+            <div class="predict-tag">预计还可使用：12 天</div>
+            <div style="opacity: 0.8; font-size: 14px;">当前预付费总余额</div>
+            <div style="font-size: 36px; font-weight: bold; margin: 10px 0;">¥ 185.40</div>
+            <div style="font-size: 12px; opacity: 0.9;">最近扣费：2026-03-24 08:00 (电费 -1.22元)</div>
+        </div>
+        <div style="border-left: 1px solid #eee; padding-left: 20px;">
+            <div style="color:#8c8c8c; font-size: 13px;">昨日消耗 (水电合计)</div>
+            <div style="font-size: 20px; margin-top: 10px;">¥ 12.50</div>
+            <div style="color:#ff4d4f; font-size: 12px; margin-top: 5px;">↑ 15% 较上周平均</div>
+        </div>
+        <div style="border-left: 1px solid #eee; padding-left: 20px;">
+            <div style="color:#8c8c8c; font-size: 13px;">本月充值总计</div>
+            <div style="font-size: 20px; margin-top: 10px;">¥ 500.00</div>
+            <div style="color:#52c41a; font-size: 12px; margin-top: 5px;">3 笔缴费记录</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="filter-bar">
+            <strong>能耗扣费明细</strong>
+            <select style="padding: 5px;"><option>全部能源类型</option><option>电能</option><option>水耗</option></select>
+            <input type="date" value="2026-03-01"> 至 <input type="date" value="2026-03-24">
+            <button style="background:var(--primary); color:white; border:none; padding:5px 15px; border-radius:4px; cursor:pointer;">查询</button>
+            <button style="margin-left:auto; background:none; border:1px solid #ddd; padding:5px 10px; cursor:pointer;">导出报表</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>时间/类型</th>
+                    <th>读数明细 (起-止)</th>
+                    <th>计算过程</th>
+                    <th>本次用量</th>
+                    <th>扣费金额</th>
+                    <th>账户余额</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="alert-row">
+                    <td>
+                        2026-03-24 08:00<br>
+                        <span class="tag tag-elec">电能</span>
+                    </td>
+                    <td>1258.2 - 1260.5</td>
+                    <td>
+                        <span class="formula">2.3 kWh × 0.85元/kWh</span>
+                        <span style="color:#faad14; font-size:11px;">⚠️ 用量较平时段偏高</span>
+                    </td>
+                    <td><span class="usage-val">2.30</span> <small>kWh</small></td>
+                    <td><span class="amount-val">-1.96</span></td>
+                    <td>¥ 185.40</td>
+                </tr>
+                <tr>
+                    <td>
+                        2026-03-23 20:00<br>
+                        <span class="tag tag-water">水耗</span>
+                    </td>
+                    <td>412.0 - 412.3</td>
+                    <td><span class="formula">0.3 m³ × 5.20元/m³</span></td>
+                    <td><span class="usage-val">0.30</span> <small>m³</small></td>
+                    <td><span class="amount-val">-1.56</span></td>
+                    <td>¥ 187.36</td>
+                </tr>
+                <tr>
+                    <td>
+                        2026-03-23 08:00<br>
+                        <span class="tag tag-elec">电能</span>
+                    </td>
+                    <td>1257.1 - 1258.2</td>
+                    <td><span class="formula">1.1 kWh × 0.85元/kWh</span></td>
+                    <td><span class="usage-val">1.10</span> <small>kWh</small></td>
+                    <td><span class="amount-val">-0.94</span></td>
+                    <td>¥ 188.92</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; text-align: right; color: #8c8c8c; font-size: 13px;">
+            共 48 条记录，每页显示 10 条 | 1 2 3 4 5 >
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

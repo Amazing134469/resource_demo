@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户详情 - 能源预付费管理系统</title>
+    <style>
+        :root { --primary: #1890ff; --danger: #ff4d4f; --warning: #faad14; --success: #52c41a; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        
+        /* 顶部面包屑与标题 */
+        .header-nav { margin-bottom: 20px; color: #666; font-size: 14px; }
+        .user-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        /* 状态看板 */
+        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .stat-label { color: #999; font-size: 13px; margin-bottom: 8px; }
+        .stat-val { font-size: 24px; font-weight: bold; }
+
+        /* 主体内容布局 */
+        .main-layout { display: flex; gap: 20px; }
+        .left-content { flex: 1; background: white; border-radius: 8px; min-height: 500px; padding: 20px; }
+        .right-sidebar { width: 320px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* 标签页设计 */
+        .tab-nav { border-bottom: 2px solid #f0f0f0; margin-bottom: 20px; display: flex; gap: 30px; }
+        .tab-item { padding: 10px 5px; cursor: pointer; color: #666; position: relative; }
+        .tab-item.active { color: var(--primary); font-weight: bold; }
+        .tab-item.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary); }
+
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        th { color: #999; font-weight: normal; }
+        .type-tag { padding: 2px 6px; border-radius: 4px; font-size: 12px; border: 1px solid #ddd; }
+        .type-elec { color: #1890ff; background: #e6f7ff; border-color: #91d5ff; }
+        .type-water { color: #52c41a; background: #f6ffed; border-color: #b7eb8f; }
+
+        /* 右侧操作组件 */
+        .action-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 10px; background: #fafafa; border-radius: 4px; }
+        
+        .btn { border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: white; border: 1px solid #d9d9d9; color: #666; }
+        .btn-danger { background: var(--danger); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="header-nav">预付费管理 / 用户列表 / <b>用户详情</b></div>
+
+<div class="user-header">
+    <div>
+        <span style="font-size: 22px; font-weight: bold; margin-right: 15px;">A-101 张三</span>
+        <span class="type-tag" style="background: #eee;">个人住户</span>
+        <span style="margin-left: 20px; color: #666;">关联手机：138****8888</span>
+    </div>
+    <button class="btn btn-primary" style="width: auto;" onclick="alert('跳转充值页面')">+ 账户充值</button>
+</div>
+
+<div class="dashboard">
+    <div class="stat-card">
+        <div class="stat-label">账户当前总余额</div>
+        <div class="stat-val" id="total-balance">¥ 52.40</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">本月累计耗电</div>
+        <div class="stat-val">128.5 kW·h</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">本月累计耗水</div>
+        <div class="stat-val">12.2 m³</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">账户状态</div>
+        <div class="stat-val" style="color: var(--success); font-size: 18px;">正常运行中</div>
+    </div>
+</div>
+
+<div class="main-layout">
+    <div class="left-content">
+        <div class="tab-nav">
+            <div class="tab-item active" onclick="switchTab('bill')">能耗扣费明细</div>
+            <div class="tab-item" onclick="switchTab('recharge')">历史充值记录</div>
+        </div>
+
+        <div id="bill-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>扣费时间</th>
+                        <th>消费类型</th>
+                        <th>消耗数值</th>
+                        <th>扣费金额</th>
+                        <th>扣后余额</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2026-03-24 09:00</td>
+                        <td><span class="type-tag type-elec">电能</span></td>
+                        <td>2.4 kW·h</td>
+                        <td><b style="color:#f5222d;">-1.44</b></td>
+                        <td>¥ 52.40</td>
+                    </tr>
+                    <tr>
+                        <td>2026-03-23 18:00</td>
+                        <td><span class="type-tag type-water">水耗</span></td>
+                        <td>0.5 m³</td>
+                        <td><b style="color:#f5222d;">-2.50</b></td>
+                        <td>¥ 53.84</td>
+                    </tr>
+                    <tr>
+                        <td>2026-03-23 09:00</td>
+                        <td><span class="type-tag type-elec">电能</span></td>
+                        <td>1.8 kW·h</td>
+                        <td><b style="color:#f5222d;">-1.08</b></td>
+                        <td>¥ 56.34</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="recharge-section" style="display:none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>充值时间</th>
+                        <th>支付渠道</th>
+                        <th>订单号</th>
+                        <th>充值金额</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2026-03-01 10:20</td>
+                        <td>微信支付</td>
+                        <td>ORD_20260301_009</td>
+                        <td><b style="color:var(--success);">+200.00</b></td>
+                        <td>成功</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="right-sidebar">
+        <div class="action-card">
+            <div class="card-title">远程控制 (强制开关)</div>
+            <div class="control-row">
+                <span>智能电表 (E-001)</span>
+                <span style="color:var(--success)">● 通电中</span>
+                <button class="btn btn-danger" style="width: auto; padding: 4px 10px;" onclick="confirmControl('断开电闸')">断电</button>
+            </div>
+            <div class="control-row">
+                <span>智能水阀 (W-092)</span>
+                <span style="color:var(--success)">● 供水中</span>
+                <button class="btn btn-danger" style="width: auto; padding: 4px 10px;" onclick="confirmControl('关闭水阀')">关阀</button>
+            </div>
+            <p style="font-size: 11px; color: #999;">注意：强制关闭操作将实时下发指令至终端硬件，请确保已履行告知义务。</p>
+        </div>
+
+        <div class="action-card">
+            <div class="card-title">催缴通知</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-outline" onclick="sendNotify('短信')">发送催缴短信</button>
+                <button class="btn btn-outline" onclick="sendNotify('微信')">推送微信模版消息</button>
+            </div>
+            <div style="margin-top: 15px; font-size: 12px; color: #666; border-top: 1px dashed #eee; pt: 10px;">
+                最近催缴记录：<br>
+                <span style="color: #999;">2026-03-20 短信发送成功</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(type) {
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        document.getElementById('bill-section').style.display = type === 'bill' ? 'block' : 'none';
+        document.getElementById('recharge-section').style.display = type === 'recharge' ? 'block' : 'none';
+    }
+
+    function confirmControl(action) {
+        if(confirm(`确定要执行【${action}】操作吗？该操作将导致用户停能。`)) {
+            alert("指令已下发，设备状态更新中...");
+        }
+    }
+
+    function sendNotify(type) {
+        alert(`正在通过【${type}】渠道发送余额提醒/催缴通知...`);
+    }
+</script>
+
+</body>
+</html>
